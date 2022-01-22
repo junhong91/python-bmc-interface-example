@@ -16,7 +16,7 @@ if __name__ == "__main__":
     bmc_factory = factory.BMCFactory()
 
     try:
-        bmc = bmc_factory.create_bmc(args.type)
+        bmc = bmc_factory.create_bmc(args.type, args.ip, args.user, args.password, args.url)
         bmc.set_next_boot_virtual_CD()
         bmc.reboot_server()
     except:

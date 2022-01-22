@@ -1,4 +1,4 @@
-from bmc_interface import BaseboardManagementController
+from base import BaseboardManagementController
 
 class ILOBMC(BaseboardManagementController):
     def reboot_server(self):
