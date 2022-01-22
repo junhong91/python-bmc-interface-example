@@ -3,6 +3,6 @@ class BaseboardManagementController:
         """Reboot BMC server"""
         pass
 
-    def attach_iso(self):
+    def set_next_boot_virtual_CD(self):
         """Attach ISO file into BMC server"""
         pass

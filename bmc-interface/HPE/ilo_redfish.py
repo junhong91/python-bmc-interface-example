@@ -6,7 +6,7 @@ class ILOBMC(BaseboardManagementController):
         print("Reboot ILO BMC!")
         pass
 
-    def attach_iso(self):
-        """Overrides BaseboardManagementController.attach_iso"""
+    def set_next_boot_virtual_CD(self):
+        """Overrides BaseboardManagementController.set_next_boot_virtual_CD"""
         print("Attach ISO file into ILO BMC!")
         pass    
