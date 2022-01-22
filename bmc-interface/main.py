@@ -1,11 +1,14 @@
 import HPE
 import DELL
+import factory
 
 if __name__ == "__main__":
-    dell_bmc = DELL.IDRACBMC()
-    dell_bmc.reboot_server()
-    dell_bmc.attach_iso()
+    bmc_factory = factory.BMCFactory()
 
-    hpe_bmc = HPE.ILOBMC()
-    hpe_bmc.reboot_server()
-    hpe_bmc.attach_iso()
+    try:
+        bmc = bmc_factory.create_bmc("DELL")
+        bmc.attach_iso()
+        bmc.reboot_server()
+    except:
+        print("Invalid support BMC hardware.")
+        
