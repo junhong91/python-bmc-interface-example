@@ -16,6 +16,7 @@ class ILOBMC(BaseboardManagementController):
         except ServerDownOrUnreachableError as excp:
             sys.stderr.write("ERROR: server not reachable or does not support RedFish.\n")
             sys.exit()
+        self._resource_instances = get_resource_directory(self._redfishobj)
 
         super(ILOBMC, self).__init__(ip, username, password, url)
 
@@ -24,67 +25,75 @@ class ILOBMC(BaseboardManagementController):
 
     def reboot_server(self):
         """Overrides"""
-        instances = get_resource_directory(self._redfishobj)
-        for i in instances:
+        sys_resp = None
+
+        for i in self._resource_instances:
             #Find the relevant URI
             if '#ComputerSystem.' in i['@odata.type']:
                 sys_uri = i['@odata.id']
                 sys_resp = self._redfishobj.get(sys_uri)
 
-        if sys_resp:
-            sys_reboot_uri = sys_resp.obj['Actions']['#ComputerSystem.Reset']['target']
-            body = dict()
-            body['Action'] = 'ComputerSystem.Reset'
-            body['ResetType'] = "ForceRestart"
-            resp = self._redfishobj.post(sys_reboot_uri, body)
-            #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
-            #error message to see what went wrong
-            if resp.status == 400:
-                try:
-                    print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
-                                                                                        sort_keys=True))
-                except Exception as excp:
-                    sys.stderr.write("A response error occurred, unable to access iLO Extended "
-                                    "Message Info...")
-            elif resp.status != 200:
-                sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
-            else:
-                print("Success!\n")
-                print(json.dumps(resp.dict, indent=4, sort_keys=True))
+        if sys_resp is None:
+            sys.stderr.write("Failed to get redfish Computer System uri...")
+            return
+
+        sys_reboot_uri = sys_resp.obj['Actions']['#ComputerSystem.Reset']['target']
+        body = dict()
+        body['Action'] = 'ComputerSystem.Reset'
+        body['ResetType'] = "ForceRestart"
+        resp = self._redfishobj.post(sys_reboot_uri, body)
+        #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
+        #error message to see what went wrong
+        if resp.status == 400:
+            try:
+                print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                                                                    sort_keys=True))
+            except Exception as excp:
+                sys.stderr.write("A response error occurred, unable to access iLO Extended "
+                                "Message Info...")
+        elif resp.status != 200:
+            sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+        else:
+            print("Success!\n")
+            print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
     def set_next_boot_virtual_CD(self):
         """Overrides"""
-        instances = get_resource_directory(self._redfishobj)
-        for i in instances:
+        virt_media_uri = None
+
+        for i in self._resource_instances:
             #Find the relevant URI
             if '#VirtualMediaCollection.' in i['@odata.type']:
                 virt_media_uri = i['@odata.id']
+        
+        if virt_media_uri is None:
+            sys.stderr.write("Failed to get redfish VirtualMediaCollection uri...")
+            return
 
-        if virt_media_uri:
-            virt_media_resp = self._redfishobj.get(virt_media_uri)
-            for virt_media_slot in virt_media_resp.obj['Members']:
-                data = self._redfishobj.get(virt_media_slot['@odata.id'])
+        virt_media_resp = self._redfishobj.get(virt_media_uri)
+        for virt_media_slot in virt_media_resp.obj['Members']:
+            data = self._redfishobj.get(virt_media_slot['@odata.id'])
 
-                if MEDIA_TYPE in data.dict['MediaTypes']:
-                    virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
-                    post_body = {"Image": self.url}
-                    resp = self._redfishobj.post(virt_media_mount_uri, post_body)
+            if MEDIA_TYPE in data.dict['MediaTypes']:
+                virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
+                post_body = {"Image": self.url}
+                resp = self._redfishobj.post(virt_media_mount_uri, post_body)
 
-                    patch_body = {}
-                    patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
-                    boot_resp = self._redfishobj.patch(data.obj['@odata.id'], patch_body)
-                    if not boot_resp.status == 200:
-                        sys.stderr.write("Failure setting BootOnNextServerReset")
+                patch_body = {}
+                patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
+                boot_resp = self._redfishobj.patch(data.obj['@odata.id'], patch_body)
+                if not boot_resp.status == 200:
+                    sys.stderr.write("Failure setting BootOnNextServerReset")
 
-                    if resp.status == 400:
-                        try:
-                            print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
-                                                                                    sort_keys=True))
-                        except Exception as excp:
-                            sys.stderr.write("A response error occurred, unable to access iLO"
-                                            "Extended Message Info...")
-                    elif resp.status != 200:
-                        sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
-                    else:
-                        print("Success!\n")
-                        print(json.dumps(resp.dict, indent=4, sort_keys=True))
+                if resp.status == 400:
+                    try:
+                        print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                                                                sort_keys=True))
+                    except Exception as excp:
+                        sys.stderr.write("A response error occurred, unable to access iLO"
+                                        "Extended Message Info...")
+                elif resp.status != 200:
+                    sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+                else:
+                    print("Success!\n")
+                    print(json.dumps(resp.dict, indent=4, sort_keys=True))
