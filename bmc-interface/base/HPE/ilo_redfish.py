@@ -10,7 +10,7 @@ class ILOBMC(BaseboardManagementController):
     def __init__(self, ip, username, password, url):
         super(ILOBMC, self).__init__(ip, username, password, url)
         
-        self._redfishobj = RedfishClient(base_url="https://" + url, username=username, password=password)
+        self._redfishobj = RedfishClient(base_url="https://" + ip, username=username, password=password)
         try:
             self._redfishobj.login()
         except ServerDownOrUnreachableError as excp:
