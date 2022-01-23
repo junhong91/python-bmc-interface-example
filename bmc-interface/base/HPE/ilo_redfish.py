@@ -31,7 +31,7 @@ class ILOBMC(BaseboardManagementController):
 
         resource_instances = get_resource_directory(self._redfishobj)
         for instance in resource_instances:
-            #Use Resource directory to find the relevant URI
+            #Find the relevant URI
             if '#ComputerSystem.' in instance['@odata.type']:
                 systems_uri = instance['@odata.id']
                 systems_response = self._redfishobj.get(systems_uri)
@@ -64,7 +64,7 @@ class ILOBMC(BaseboardManagementController):
 
         resource_instances = get_resource_directory(self._redfishobj)
         for instance in resource_instances:
-            #Use Resource directory to find the relevant URI
+            #Find the relevant URI
             if '#VirtualMediaCollection.' in instance['@odata.type']:
                 virtual_media_uri = instance['@odata.id']
 

@@ -1,6 +1,6 @@
-import HPE
-import DELL
-import factory
+import base.HPE
+import base.DELL
+import bmc_factory
 
 import sys
 import argparse
@@ -15,7 +15,7 @@ parser.add_argument('--url', type=str, help='Virtual CD url', required=True)
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    bmc_factory = factory.BMCFactory() 
+    bmc_factory = bmc_factory.BMCFactory() 
     bmc = bmc_factory.create_bmc(args.type, args.ip, args.user, args.password, args.url)
     if bmc is None:
         sys.stderr.write("ERROR: Invalid support BMC hardware.")
