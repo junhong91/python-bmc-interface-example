@@ -35,11 +35,7 @@ class ILOBMC(BaseboardManagementController):\
             sys.stderr.write("Failed to get redfish Computer System uri...")
             return
 
-        sys_reboot_uri = sys_resp.obj['Actions']['#ComputerSystem.Reset']['target']
-        body = dict()
-        body['Action'] = 'ComputerSystem.Reset'
-        body['ResetType'] = "ForceRestart"
-        self._ilo_reboot(sys_reboot_uri, body)
+        self._ilo_reboot(sys_resp)
 
     def set_next_boot_virtual_CD(self):
         """Overrides"""
@@ -59,19 +55,16 @@ class ILOBMC(BaseboardManagementController):\
             data = self._redfishobj.get(virt_media_slot['@odata.id'])
 
             if "CD" in data.dict['MediaTypes']:
-                virt_media_unmount_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
-                virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
-  
-                self._ilo_unmount_iso(virt_media_unmount_uri, {})
-
-                post_body = {"Image": self.url}
-                self._ilo_mount_iso(virt_media_mount_uri, post_body)
-
-                patch_body = {}
-                patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
-                self._ilo_set_on_next_server_reset(patch_body)
+                self._ilo_unmount_iso(data)
+                self._ilo_mount_iso(data)
+                self._ilo_set_on_next_server_reset(data)
     
-    def _ilo_reboot(self, uri, body):
+    def _ilo_reboot(self, sys_data):
+        uri = sys_data.obj['Actions']['#ComputerSystem.Reset']['target']
+        body = dict()
+        body['Action'] = 'ComputerSystem.Reset'
+        body['ResetType'] = "ForceRestart"
+        
         resp = self._redfishobj.post(uri, body)
         if resp.status == 400:
             try:
@@ -86,12 +79,15 @@ class ILOBMC(BaseboardManagementController):\
             print("Success!\n")
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
 
-    def _ilo_unmount_iso(self, uri, body):
-        resp = self._redfishobj.post(uri, body)
+    def _ilo_unmount_iso(self, virt_cd_data):
+        uri = virt_cd_data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
+        resp = self._redfishobj.post(uri, {})
         if not resp.status == 200:
             sys.stderr.write("Failure unmounting old iso")
 
-    def _ilo_mount_iso(self, uri, body):
+    def _ilo_mount_iso(self, virt_cd_data):
+        uri = virt_cd_data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
+        body = {"Image": self.url}
         resp = self._redfishobj.post(uri, body)
         if resp.status == 400:
             try:
@@ -106,7 +102,10 @@ class ILOBMC(BaseboardManagementController):\
             print("Success!\n")
             print(json.dumps(resp.dict, indent=4, sort_keys=True))
     
-    def _ilo_set_on_next_server_reset(self, body):
-        resp = self._redfishobj.patch(data.obj['@odata.id'], body)
+    def _ilo_set_on_next_server_reset(self, virt_cd_data):
+        uri = virt_cd_data.obj['@odata.id'], patch_body
+        body = {}
+        body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
+        resp = self._redfishobj.patch(uri, body)
         if not resp.status == 200:
             sys.stderr.write("Failure setting BootOnNextServerReset")
