@@ -9,7 +9,8 @@ from .get_resource_directory import get_resource_directory
 class ILOBMC(BaseboardManagementController):
     def __init__(self, ip, username, password, url):
         super(ILOBMC, self).__init__(ip, username, password, url)
-
+        self.ip = "https://" + self.ip
+        
         self._redfishobj = RedfishClient(base_url=url, username=username, password=password)
         try:
             self._redfishobj.login()
