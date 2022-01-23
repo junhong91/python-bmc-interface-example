@@ -23,19 +23,19 @@ class ILOBMC(BaseboardManagementController):
 
     def reboot_server(self):
         """Overrides"""
-        sys_resp = None
+        sys_data = None
 
         for i in self._resource_instances:
             # Find the relevant URI
             if '#ComputerSystem.' in i['@odata.type']:
                 sys_uri = i['@odata.id']
-                sys_resp = self._redfishobj.get(sys_uri)
+                sys_data = self._redfishobj.get(sys_uri)
 
-        if sys_resp is None:
-            sys.stderr.write("Failed to get redfish Computer System uri...")
+        if sys_data is None:
+            sys.stderr.write("Failure getting redfish Computer System uri...")
             return
 
-        self._ilo_reboot(sys_resp)
+        self._ilo_reboot(sys_data)
 
     def set_next_boot_virtual_CD(self):
         """Overrides"""
@@ -47,17 +47,17 @@ class ILOBMC(BaseboardManagementController):
                 virt_media_uri = i['@odata.id']
         
         if virt_media_uri is None:
-            sys.stderr.write("Failed to get redfish VirtualMediaCollection uri...")
+            sys.stderr.write("Failure getting redfish VirtualMediaCollection uri...")
             return
 
-        virt_media_resp = self._redfishobj.get(virt_media_uri)
-        for virt_media_slot in virt_media_resp.obj['Members']:
-            data = self._redfishobj.get(virt_media_slot['@odata.id'])
+        virt_media_data = self._redfishobj.get(virt_media_uri)
+        for virt_media_slot in virt_media_data.obj['Members']:
+            virt_cd_data = self._redfishobj.get(virt_media_slot['@odata.id'])
 
-            if "CD" in data.dict['MediaTypes']:
-                self._ilo_unmount_iso(data)
-                self._ilo_mount_iso(data)
-                self._ilo_set_on_next_server_reset(data)
+            if "CD" in virt_cd_data.dict['MediaTypes']:
+                self._ilo_unmount_iso(virt_cd_data)
+                self._ilo_mount_iso(virt_cd_data)
+                self._ilo_set_on_next_server_reset(virt_cd_data)
     
     def _ilo_reboot(self, sys_data):
         uri = sys_data.obj['Actions']['#ComputerSystem.Reset']['target']
