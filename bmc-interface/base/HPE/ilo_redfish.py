@@ -75,21 +75,14 @@ class ILOBMC(BaseboardManagementController):\
             if "CD" in data.dict['MediaTypes']:
                 virt_media_unmount_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
                 virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
-                patch_body = {}
-                patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
-                post_body = {"Image": self.url}
-
+  
                 # REDFISH: Remove old mounted iso
                 unmount_resp = self._redfishobj.post(virt_media_unmount_uri, {})
                 if not unmount_resp.status == 200:
                     sys.stderr.write("Failure unmounting old iso")
 
-                # REDFISH: Set boot on server reset
-                boot_resp = self._redfishobj.patch(data.obj['@odata.id'], patch_body)
-                if not boot_resp.status == 200:
-                    sys.stderr.write("Failure setting BootOnNextServerReset")
-
                 # REDFISH: Mount new iso
+                post_body = {"Image": self.url}
                 mount_resp = self._redfishobj.post(virt_media_mount_uri, post_body)
                 if mount_resp.status == 400:
                     try:
@@ -103,3 +96,10 @@ class ILOBMC(BaseboardManagementController):\
                 else:
                     print("Success!\n")
                     print(json.dumps(mount_resp.dict, indent=4, sort_keys=True))
+
+                # REDFISH: Set boot on server reset
+                patch_body = {}
+                patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
+                boot_resp = self._redfishobj.patch(data.obj['@odata.id'], patch_body)
+                if not boot_resp.status == 200:
+                    sys.stderr.write("Failure setting BootOnNextServerReset")
