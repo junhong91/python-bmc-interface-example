@@ -6,10 +6,10 @@ from redfish import RedfishClient
 from redfish.rest.v1 import ServerDownOrUnreachableError
 from .get_resource_directory import get_resource_directory
 
-class ILOBMC(BaseboardManagementController):
-    MEDIA_TYPE_CD = "CD"
-
+class ILOBMC(BaseboardManagementController):\
     def __init__(self, ip, username, password, url):
+        super(ILOBMC, self).__init__(ip, username, password, url)
+
         self._redfishobj = RedfishClient(base_url=url, username=username, password=password)
         try:
             self._redfishobj.login()
@@ -17,8 +17,6 @@ class ILOBMC(BaseboardManagementController):
             sys.stderr.write("ERROR: server not reachable or does not support RedFish.\n")
             sys.exit()
         self._resource_instances = get_resource_directory(self._redfishobj)
-
-        super(ILOBMC, self).__init__(ip, username, password, url)
 
     def __del__(self):
         self._redfishobj.logout()
@@ -74,7 +72,7 @@ class ILOBMC(BaseboardManagementController):
         for virt_media_slot in virt_media_resp.obj['Members']:
             data = self._redfishobj.get(virt_media_slot['@odata.id'])
 
-            if MEDIA_TYPE_CD in data.dict['MediaTypes']:
+            if "CD" in data.dict['MediaTypes']:
                 virt_media_unmount_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
                 virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
                 patch_body = {}
