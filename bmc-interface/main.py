@@ -17,7 +17,6 @@ args = parser.parse_args()
 if __name__ == "__main__":
     bmc_factory = factory.BMCFactory() 
     bmc = bmc_factory.create_bmc(args.type, args.ip, args.user, args.password, args.url)
-
     if bmc is None:
         sys.stderr.write("ERROR: Invalid support BMC hardware.")
         sys.exit()
