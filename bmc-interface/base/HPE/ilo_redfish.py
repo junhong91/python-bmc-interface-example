@@ -27,21 +27,19 @@ class ILOBMC(BaseboardManagementController):
 
     def reboot_server(self):
         """Overrides BaseboardManagementController.reboot_server"""
-        systems_members_response = None
-
-        resource_instances = get_resource_directory(self._redfishobj)
-        for instance in resource_instances:
+        instances = get_resource_directory(self._redfishobj)
+        for i in instances:
             #Find the relevant URI
-            if '#ComputerSystem.' in instance['@odata.type']:
-                systems_uri = instance['@odata.id']
-                systems_response = self._redfishobj.get(systems_uri)
+            if '#ComputerSystem.' in i['@odata.type']:
+                sys_uri = i['@odata.id']
+                sys_resp = self._redfishobj.get(sys_uri)
 
-        if systems_response:
-            system_reboot_uri = systems_response.obj['Actions']['#ComputerSystem.Reset']['target']
+        if sys_resp:
+            sys_reboot_uri = sys_resp.obj['Actions']['#ComputerSystem.Reset']['target']
             body = dict()
             body['Action'] = 'ComputerSystem.Reset'
             body['ResetType'] = "ForceRestart"
-            resp = self._redfishobj.post(system_reboot_uri, body)
+            resp = self._redfishobj.post(sys_reboot_uri, body)
             #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
             #error message to see what went wrong
             if resp.status == 400:
@@ -59,23 +57,21 @@ class ILOBMC(BaseboardManagementController):
 
     def set_next_boot_virtual_CD(self):
         """Overrides BaseboardManagementController.set_next_boot_virtual_CD"""
-        virtual_media_url = None
-        virtual_media_response = []
-
-        resource_instances = get_resource_directory(self._redfishobj)
-        for instance in resource_instances:
+        instances = get_resource_directory(self._redfishobj)
+        for i in instances:
             #Find the relevant URI
-            if '#VirtualMediaCollection.' in instance['@odata.type']:
-                virtual_media_uri = instance['@odata.id']
+            if '#VirtualMediaCollection.' in i['@odata.type']:
+                virt_media_uri = i['@odata.id']
 
-        if virtual_media_uri:
-            virtual_media_response = self._redfishobj.get(virtual_media_uri)
-            for virtual_media_slot in virtual_media_response.obj['Members']:
-                data = self._redfishobj.get(virtual_media_slot['@odata.id'])
+        if virt_media_uri:
+            virt_media_resp = self._redfishobj.get(virt_media_uri)
+            for virt_media_slot in virt_media_resp.obj['Members']:
+                data = self._redfishobj.get(virt_media_slot['@odata.id'])
+                
                 if MEDIA_TYPE in data.dict['MediaTypes']:
-                    virtual_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
+                    virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
                     post_body = {"Image": self.url}
-                    resp = self._redfishobj.post(virtual_media_mount_uri, post_body)
+                    resp = self._redfishobj.post(virt_media_mount_uri, post_body)
                     
                     if BOOT_ON_NEXT_SERVER_RESET is not None:
                         patch_body = {}
