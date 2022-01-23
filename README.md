@@ -1,4 +1,5 @@
 # python-bmc-interface-example
+Implement Generic BMC(Baseboard Management Controller) Class to support both idrac(`DELL`) and ilo(`HPE`).
 
 ## Pre-requisite
 Install iLO python library
