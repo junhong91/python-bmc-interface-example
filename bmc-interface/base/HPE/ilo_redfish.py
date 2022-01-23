@@ -28,7 +28,7 @@ class ILOBMC(BaseboardManagementController):
         sys_resp = None
 
         for i in self._resource_instances:
-            #Find the relevant URI
+            # Find the relevant URI
             if '#ComputerSystem.' in i['@odata.type']:
                 sys_uri = i['@odata.id']
                 sys_resp = self._redfishobj.get(sys_uri)
@@ -41,9 +41,9 @@ class ILOBMC(BaseboardManagementController):
         body = dict()
         body['Action'] = 'ComputerSystem.Reset'
         body['ResetType'] = "ForceRestart"
+
+        # REDFISH: Request rebooting
         resp = self._redfishobj.post(sys_reboot_uri, body)
-        #If iLO responds with soemthing outside of 200 or 201 then lets check the iLO extended info
-        #error message to see what went wrong
         if resp.status == 400:
             try:
                 print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
@@ -62,7 +62,7 @@ class ILOBMC(BaseboardManagementController):
         virt_media_uri = None
 
         for i in self._resource_instances:
-            #Find the relevant URI
+            # Find the relevant URI
             if '#VirtualMediaCollection.' in i['@odata.type']:
                 virt_media_uri = i['@odata.id']
         
@@ -75,25 +75,33 @@ class ILOBMC(BaseboardManagementController):
             data = self._redfishobj.get(virt_media_slot['@odata.id'])
 
             if MEDIA_TYPE in data.dict['MediaTypes']:
+                virt_media_unmount_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
                 virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
-                post_body = {"Image": self.url}
-                resp = self._redfishobj.post(virt_media_mount_uri, post_body)
-
                 patch_body = {}
                 patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
+                post_body = {"Image": self.url}
+
+                # REDFISH: Remove old mounted iso
+                unmount_resp = self._redfishobj.post(virt_media_unmount_uri, {})
+                if not unmount_resp.status == 200:
+                    sys.stderr.write("Failure unmounting old iso")
+
+                # REDFISH: Set boot on server reset
                 boot_resp = self._redfishobj.patch(data.obj['@odata.id'], patch_body)
                 if not boot_resp.status == 200:
                     sys.stderr.write("Failure setting BootOnNextServerReset")
 
-                if resp.status == 400:
+                # REDFISH: Mount new iso
+                mount_resp = self._redfishobj.post(virt_media_mount_uri, post_body)
+                if mount_resp.status == 400:
                     try:
-                        print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                        print(json.dumps(mount_resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
                                                                                 sort_keys=True))
                     except Exception as excp:
                         sys.stderr.write("A response error occurred, unable to access iLO"
                                         "Extended Message Info...")
-                elif resp.status != 200:
-                    sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+                elif mount_resp.status != 200:
+                    sys.stderr.write("An http response of \'%s\' was returned.\n" % mount_resp.status)
                 else:
                     print("Success!\n")
-                    print(json.dumps(resp.dict, indent=4, sort_keys=True))
+                    print(json.dumps(mount_resp.dict, indent=4, sort_keys=True))
