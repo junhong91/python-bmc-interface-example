@@ -39,21 +39,7 @@ class ILOBMC(BaseboardManagementController):\
         body = dict()
         body['Action'] = 'ComputerSystem.Reset'
         body['ResetType'] = "ForceRestart"
-
-        # REDFISH: Request rebooting
-        resp = self._redfishobj.post(sys_reboot_uri, body)
-        if resp.status == 400:
-            try:
-                print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
-                                                                                    sort_keys=True))
-            except Exception as excp:
-                sys.stderr.write("A response error occurred, unable to access iLO Extended "
-                                "Message Info...")
-        elif resp.status != 200:
-            sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
-        else:
-            print("Success!\n")
-            print(json.dumps(resp.dict, indent=4, sort_keys=True))
+        self._ilo_reboot(sys_reboot_uri, body)
 
     def set_next_boot_virtual_CD(self):
         """Overrides"""
@@ -76,30 +62,51 @@ class ILOBMC(BaseboardManagementController):\
                 virt_media_unmount_uri = data.obj['Actions']['#VirtualMedia.EjectMedia']['target']
                 virt_media_mount_uri = data.obj['Actions']['#VirtualMedia.InsertMedia']['target']
   
-                # REDFISH: Remove old mounted iso
-                unmount_resp = self._redfishobj.post(virt_media_unmount_uri, {})
-                if not unmount_resp.status == 200:
-                    sys.stderr.write("Failure unmounting old iso")
+                self._ilo_unmount_iso(virt_media_unmount_uri, {})
 
-                # REDFISH: Mount new iso
                 post_body = {"Image": self.url}
-                mount_resp = self._redfishobj.post(virt_media_mount_uri, post_body)
-                if mount_resp.status == 400:
-                    try:
-                        print(json.dumps(mount_resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
-                                                                                sort_keys=True))
-                    except Exception as excp:
-                        sys.stderr.write("A response error occurred, unable to access iLO"
-                                        "Extended Message Info...")
-                elif mount_resp.status != 200:
-                    sys.stderr.write("An http response of \'%s\' was returned.\n" % mount_resp.status)
-                else:
-                    print("Success!\n")
-                    print(json.dumps(mount_resp.dict, indent=4, sort_keys=True))
+                self._ilo_mount_iso(virt_media_mount_uri, post_body)
 
-                # REDFISH: Set boot on server reset
                 patch_body = {}
                 patch_body["Oem"] = {"Hpe": {"BootOnNextServerReset": True}}
-                boot_resp = self._redfishobj.patch(data.obj['@odata.id'], patch_body)
-                if not boot_resp.status == 200:
-                    sys.stderr.write("Failure setting BootOnNextServerReset")
+                self._ilo_set_on_next_server_reset(patch_body)
+    
+    def _ilo_reboot(self, uri, body):
+        resp = self._redfishobj.post(uri, body)
+        if resp.status == 400:
+            try:
+                print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                                                                    sort_keys=True))
+            except Exception as excp:
+                sys.stderr.write("A response error occurred, unable to access iLO Extended "
+                                "Message Info...")
+        elif resp.status != 200:
+            sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+        else:
+            print("Success!\n")
+            print(json.dumps(resp.dict, indent=4, sort_keys=True))
+
+    def _ilo_unmount_iso(self, uri, body):
+        resp = self._redfishobj.post(uri, body)
+        if not resp.status == 200:
+            sys.stderr.write("Failure unmounting old iso")
+
+    def _ilo_mount_iso(self, uri, body):
+        resp = self._redfishobj.post(uri, body)
+        if resp.status == 400:
+            try:
+                print(json.dumps(resp.obj['error']['@Message.ExtendedInfo'], indent=4, \
+                                                                        sort_keys=True))
+            except Exception as excp:
+                sys.stderr.write("A response error occurred, unable to access iLO"
+                                "Extended Message Info...")
+        elif resp.status != 200:
+            sys.stderr.write("An http response of \'%s\' was returned.\n" % resp.status)
+        else:
+            print("Success!\n")
+            print(json.dumps(resp.dict, indent=4, sort_keys=True))
+    
+    def _ilo_set_on_next_server_reset(self, body):
+        resp = self._redfishobj.patch(data.obj['@odata.id'], body)
+        if not resp.status == 200:
+            sys.stderr.write("Failure setting BootOnNextServerReset")
